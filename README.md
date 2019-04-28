@@ -1,7 +1,28 @@
-SSL-TLS-clientserver
-====================
+# SSL-TLS-clientserver
 
-SSL/TLS client server examples using libssl and polarssl
+SSL/TLS client server examples using openssl
 
-See [SSL/TLS sockets programming using openssl and polarssl ](http://cloudfundoo.wordpress.com/2012/07/09/ssltls-sockets-programming-using-openssl-and-polarssl/ "SSL/TLS sockets programming using openssl and polarssl") 
- for build instructions.
+## Build
+```shell
+$ mkdir build
+$ cd build
+$ cmake ..
+$ make
+$ cp -rf ../certs ./
+```
+
+## Test
+### Server side
+```shell
+$ ./server
+Certificate Verify Success
+Client Hello World
+```
+### Client Side
+```shell
+$ ./client
+Socket successfully created..
+connected to the server..
+Certificate Verify Success
+SSL server send Client Hello World Appended by SSL serve
+```
