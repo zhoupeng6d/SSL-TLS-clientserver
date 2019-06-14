@@ -1,7 +1,14 @@
 cmake_minimum_required(VERSION 3.14.0)
+
+if(BUILD_QL)
+    set(CMAKE_TOOLCHAIN_FILE cmake/ql.cmake)
+    message(STATUS "Cross compilation with CMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}")
+endif()
+
 project(SSL-TLS-clientserver VERSION 0.0.1)
 
 find_package(OpenSSL REQUIRED)
+
 
 message(STATUS "openssl libs: ${OPENSSL_LIBRARIES}")
 
