@@ -4,25 +4,15 @@ SSL/TLS client server examples using openssl
 
 ## Build
 ```shell
-$ mkdir build
-$ cd build
-$ cmake ..
 $ make
-$ cp -rf ../certs ./
+$ adb shell mkdir -p /usrdata/test/certs/
+$ adb push output/gd_se_test /usrdata/test/
+$ adb push certs/* /usrdata/test/certs/
 ```
 
 ## Test
-### Server side
 ```shell
-$ ./server
-Certificate Verify Success
-Client Hello World
-```
-### Client Side
-```shell
-$ ./client
-Socket successfully created..
-connected to the server..
-Certificate Verify Success
-SSL server send Client Hello World Appended by SSL serve
+$ adb shell
+$ cd /usrdata/test/
+$ ./gd_se_test
 ```
