@@ -40,8 +40,7 @@
 #include <openssl/engine.h>
 #include <openssl/e_os2.h>
 #include <SeCrypt.h>
-#include <HEngine.h>
-#include <libSciSPIInter.h>
+#include <halSciSPI.h>
 
 
 #define USE_SE 1
@@ -82,7 +81,7 @@
 #define SSL_SERVER_ADDR		"/tmp/ssl_server"
 
 
-
+#if 0
 void libSciSPIFree(uint16_t fd)
 {
     if(fd>0)
@@ -91,6 +90,7 @@ void libSciSPIFree(uint16_t fd)
         close(fd);
 	}
 }
+#endif
 
 static void pabort(const char *s)
 {
@@ -98,8 +98,27 @@ static void pabort(const char *s)
 	abort();
 }
 
-uint16_t libSciSPIInit(void)
+
+static void hex_dump(unsigned char *buf, int len)
 {
+    int i;
+
+    for (i = 0; i < len; i++)
+    {
+        if (i && (i % 16 == 0))
+        {
+            printf("\n");
+        }
+
+        printf("%02X ", buf[i]);
+        //printf("%c", buf[i]);
+    }
+    printf("\n");
+}
+
+int libSciSPIInit(void)
+{
+#if 0
 	int fd =-1;
     const char *device = "/dev/spidev5.0";
 
@@ -164,6 +183,32 @@ uint16_t libSciSPIInit(void)
 	printf("/************************************************************/\n");
 
 	return (uint16_t)fd;
+#else
+	uint16_t len;
+    unsigned char  buf [4096];
+
+	static unsigned char select_ssla[] = // select ssl applet
+	{
+		0x00,0xA4,0x04,0x00,0x0E,0xA0,0x00,0x00,0x00,0x41,0x6c,0x69,0x59,0x75,0x6e,0x2e,0x49,0x44,0x32
+	};
+
+    if (libSciSPIInit(3) < 0)
+    {
+        printf("libSciSPIInit failed\n");
+        return -1;
+    }
+
+	/* select SSL applet */
+	memset(buf, 0, sizeof(buf));
+	if (libSciSPIIccCommand(select_ssla, sizeof(select_ssla), buf, &len) < 0)
+	{
+		return -1;
+	}
+	printf("===select SSL applet response:\n");
+	hex_dump(buf, len);
+
+	return 0;
+#endif
 }
 
 //get public key from RSA Certificate file
@@ -186,10 +231,10 @@ int SSL_CTX_use_SE_RSAPrivateKey(SSL_CTX *ctx , unsigned char kid)
 #if 0
 	RSA *rsa = RSA_new();
 
-	//temp rsa key,keysize=2048
-	int kl = 256; //key size = 2048
-	const unsigned char myD1[] =
-	{
+    //temp rsa key,keysize=2048
+    int kl = 256; //key size = 2048
+    const unsigned char myD1[] =
+    {
         0x6A,0x94,0xB2,0x5B,0x32,0xA3,0x12,0xE2,0x53,
         0x99,0x08,0x57,0xCC,0xAA,0x0C,0xA7,0x9B,0x03,0x0F,0xC7,0x62,0x49,0x48,0x9A,0x20,
         0xAD,0xC4,0x5A,0x68,0x7D,0x8D,0x7C,0xB2,0x04,0x4B,0x16,0x2A,0x81,0x36,0x4B,0x4C,
@@ -207,8 +252,9 @@ int SSL_CTX_use_SE_RSAPrivateKey(SSL_CTX *ctx , unsigned char kid)
         0x67,0xAC,0x8D,0xCD,0x8D,0x7C,0x78,0x28,0x52,0xAE,0x5F,0x65,0x6C,0xBF,0x48,0x6D,
         0xB3,0x62,0xA9,0xE2,0xB4,0x62,0x32,0xC1,0x04,0x5D,0xE0,0x64,0xF8,0x01,0x8A,0xB3,
         0x40,0x44,0x63,0x51,0xA8,0xF4,0x8D
-	};
-	const unsigned char myN1[] =
+    };
+
+    const unsigned char myN1[] =
     {
         0x89,0x98,0x36,0x80,0xA5,0xE1,0x75,0x47,0x45,
         0xE0,0x1E,0x6C,0x31,0xBB,0x55,0x4C,0x48,0x0B,0xA1,0xFE,0x58,0xA5,0x80,0x24,0x08,
@@ -229,16 +275,17 @@ int SSL_CTX_use_SE_RSAPrivateKey(SSL_CTX *ctx , unsigned char kid)
         0x68,0xEE,0x21,0xB3,0xD8,0x56,0x9D
     };
 
-	const unsigned char myE1[] = {0x03};
+    const unsigned char myE1[] = {0x03};
 
 #ifdef GD_DEBUG
-	printf("\nSSL_CTX_use_SE_RSAPrivateKey: set \"c->key = &(c->pkeys[0])\"\n");
+    printf("\nSSL_CTX_use_SE_RSAPrivateKey: set \"c->key = &(c->pkeys[0])\"\n");
 #endif
+    rsa->n = BN_bin2bn(myN1, kl, rsa->n);
+    rsa->d = BN_bin2bn(myD1, kl, rsa->d);
+    rsa->e = BN_bin2bn(myE1, 1, rsa->e);
+    rsa->version  = kid;//add by zyj
 
-	rsa->n = BN_bin2bn(myN1, kl, rsa->n);
-	rsa->d = BN_bin2bn(myD1, kl, rsa->d);
-	rsa->e = BN_bin2bn(myE1, 1, rsa->e);
-	rsa->version  = kid;//add by zyj
+    return SSL_CTX_use_RSAPrivateKey(ctx,rsa);
 #else
 
     EVP_PKEY *pkey=NULL;
@@ -250,7 +297,7 @@ int SSL_CTX_use_SE_RSAPrivateKey(SSL_CTX *ctx , unsigned char kid)
     }
 
     rsa = EVP_PKEY_get1_RSA(pkey);
-    rsa->version  = SE_TBOX_PRIV_KEY_KID;//for private key enc
+    rsa->version  = SE_TBOX_PRIV_KEY_KID;
 #endif
 
 	return SSL_CTX_use_RSAPrivateKey(ctx,rsa);
@@ -301,7 +348,9 @@ int ssl_server_thread()
 			ERR_print_errors_fp(stderr);
 			return -1;
 		}
-		SSL_CTX_set_verify(ssl_server_ctx, SSL_VERIFY_PEER, NULL);
+
+		SSL_CTX_set_verify(ssl_server_ctx, SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT, NULL);
+
 		SSL_CTX_set_verify_depth(ssl_server_ctx, 4);
 	}
 
@@ -411,6 +460,65 @@ int ssl_server_thread()
 	return 0;
 }
 
+int openssl_engine_init()
+{
+    ENGINE *engine = NULL;
+    ENGINE_load_builtin_engines();
+
+    if(engine == NULL)
+    {
+        engine = ENGINE_by_id("dynamic");
+        if (engine)
+        {
+            if (!ENGINE_ctrl_cmd_string(engine, "SO_PATH", "GDEngine", 0))
+            {
+                printf("set GDEngine PATH error!\n");
+                goto engineLoad_failed;
+            }
+            else
+                printf("set GDEngine PATH OK\n");
+
+            if(!ENGINE_ctrl_cmd_string(engine, "ID", "GDHWEngine", 0))
+            {
+                printf("set GDEngine ID error!\n");
+                goto engineLoad_failed;
+            }
+            else
+                printf("set GDEngine ID OK\n");
+
+            if(!ENGINE_ctrl_cmd_string(engine, "LOAD", NULL, 0))
+            {
+                printf("Load engine \"%s\" : error!\n", "GDHWEngine");
+engineLoad_failed:
+                ENGINE_free(engine);
+                engine = NULL;
+                return -1;
+            }
+            else
+                printf("Load engine OK\n");
+
+        }
+        else
+        {
+            printf("Dynamic Engine Get failed!\n");
+            return -1;
+        }
+    }
+
+    int init_res = ENGINE_init(engine);
+    printf("Engine name: %s \ninit result : %d \n",ENGINE_get_name(engine), init_res);
+
+    init_res = ENGINE_set_default_ciphers(engine);
+	printf("ENGINE_set_default_ciphers=gdEngine : result=%d \n",init_res);
+
+	if(1 != ENGINE_set_default(engine, ENGINE_METHOD_ALL)){
+		//printf("ENGINE_set_default_=gdEngine : result=%d \n",init_res);
+		printf("ENGINE_set_default Error XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\n");
+	}
+
+    return 0;
+}
+
 int ssl_client_thread()
 {
 	const SSL_METHOD *client_meth;
@@ -420,6 +528,12 @@ int ssl_client_thread()
 	SSL *clientssl;
 	char buffer[1024] = "Client Hello World";
 	int ret;
+
+	if (openssl_engine_init() != 0)
+	{
+		printf("openssl engine init failed!");
+		return -1;
+	}
 
 	SSL_library_init();
 	SSL_load_error_strings();
@@ -454,18 +568,18 @@ int ssl_client_thread()
 			ERR_print_errors_fp(stderr);
 			return -1;
 		}
+
+		if(SSL_CTX_check_private_key(ssl_client_ctx) != 1)  // not ok in SE mode
+		{
+			printf("Private and certificate is not matching\n");
+			return -1;
+		}
     #else
 		if (SSL_CTX_use_SE_RSAPrivateKey(ssl_client_ctx, SE_TBOX_PRIV_KEY_KID) <= 0){
 			ERR_print_errors_fp(stderr);
 			return -1;
 		}
     #endif
-
-		if(SSL_CTX_check_private_key(ssl_client_ctx) != 1)
-		{
-			printf("Private and certificate is not matching\n");
-			return -1;
-		}
 	}
 
 #if USE_SE
@@ -587,64 +701,9 @@ int ssl_client_thread()
 	return 0;
 }
 
-int openssl_engine_init()
-{
-    ENGINE *engine = NULL;
-    ENGINE_load_builtin_engines();
-
-    if(engine == NULL)
-    {
-        engine = ENGINE_by_id("dynamic");
-        if (engine)
-        {
-            if (!ENGINE_ctrl_cmd_string(engine, "SO_PATH", "GDEngine_spi", 0))
-            {
-                printf("set GDEngine PATH error!\n");
-                goto engineLoad_failed;
-            }
-            else
-                printf("set GDEngine PATH OK\n");
-
-            if(!ENGINE_ctrl_cmd_string(engine, "ID", engine_gdrand_id, 0))
-            {
-                printf("set GDEngine ID error!\n");
-                goto engineLoad_failed;
-            }
-            else
-                printf("set GDEngine ID OK\n");
-
-            if(!ENGINE_ctrl_cmd_string(engine, "LOAD", NULL, 0))
-            {
-                printf("Load engine \"%s\" : error!\n",engine_gdrand_id);
-engineLoad_failed:
-                ENGINE_free(engine);
-                engine = NULL;
-                return -1;
-            }
-            else
-                printf("Load engine OK\n");
-
-        }
-        else
-        {
-            printf("Dynamic Engine Get failed!\n");
-            return -1;
-        }
-    }
-
-    int init_res = ENGINE_init(engine);
-    printf("Engine name: %s \ninit result : %d \n",ENGINE_get_name(engine), init_res);
-
-    if(1 != ENGINE_set_default(engine, ENGINE_METHOD_RSA/*|ENGINE_METHOD_RAND*/)){  //ENGINE_METHOD_ALL
-        printf("ENGINE_set_default Error XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\n");
-    }
-
-    return 0;
-}
-
 int main()
 {
-    uint16_t sfd=-1;
+    int ret = -1;
 
     system("rm " SE_ENOVATE_ROOT_CA_CERT);
     system("rm " SE_ENOVATE_SECOND_CA_CERT);
@@ -652,15 +711,10 @@ int main()
     system("rm " SSL_CLIENT_RSA_CERT);
 
     /* init se-spi */
-    sfd = libSciSPIInit();
-    if((int16_t)sfd >0){
-        printf("**** sfd = %d ****\n",sfd);
-    }else{
-        return -1;
-    }
-
-    if(setSPI_fid((uint16_t)sfd)<=0){
-        printf("set spi id failed!\n");
+    ret = libSciSPIInit();
+    if(ret != 0){
+        printf("spi init failed!\n");
+		return -1;
     }
 
 
@@ -677,11 +731,7 @@ int main()
     p_thd_ssl_server->join();
     p_thd_ssl_client->join();
 
-
-	if(sfd>0)
-    	libSciSPIFree(sfd);
-	printf("close spi id \n");
-	sfd = -1;
+	libSciSPIFree();
 
     return 0;
 }

@@ -29,7 +29,7 @@ LD_FLAGS = -ldsi_netctrl \
 OBJ_DIR=objs
 EXE_DIR=output
 
-USER_LINK=-L. -Llibgd/ -lGDEngine_spi -lGDHAL_spi_ag35
+USER_LINK=-L. -Llibgd/ -lGDEngine -lsehal
 
 SRC_GD_SE_TEST=gd_se_test.cc
 
