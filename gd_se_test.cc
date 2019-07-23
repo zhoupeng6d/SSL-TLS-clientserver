@@ -302,7 +302,7 @@ int ssl_server_thread()
 			return -1;
 		}
 		SSL_CTX_set_verify(ssl_server_ctx, SSL_VERIFY_PEER, NULL);
-		SSL_CTX_set_verify_depth(ssl_server_ctx, 1);
+		SSL_CTX_set_verify_depth(ssl_server_ctx, 4);
 	}
 
 	#if USE_AF_UNIX
@@ -663,13 +663,13 @@ int main()
         printf("set spi id failed!\n");
     }
 
-    openssl_engine_init();
 
     /* start ssl server thread */
     std::cout << "ssl server starting..." << std::endl;
     std::unique_ptr<std::thread> p_thd_ssl_server(new std::thread(ssl_server_thread));
     std::this_thread::sleep_for(std::chrono::seconds(3));
 
+    openssl_engine_init();
     /* start ssl client thread */
     std::cout << "ssl client starting..." << std::endl;
     std::unique_ptr<std::thread> p_thd_ssl_client(new std::thread(ssl_client_thread));
